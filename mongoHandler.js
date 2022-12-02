@@ -63,6 +63,56 @@ const mongoHandler = {
     } catch (e) {
       res.status(500).send('Ошибка')
     }
+  },
+  findTasks: async (token, userId, res) => {
+    try {
+      await client.connect()
+      const collection = await client.db('todo').collection('tasks')
+      const users = await client.db('todo').collection('users')
+      const isUserLogged = await users.findOne({token: token})
+      if (isUserLogged !== null) {
+        if (isUserLogged._id === new ObjectId(userId)) {
+          const todos = await collection.find({user: new ObjectId(userId)}).toArray()
+          res.status(200).send(todos)
+        } else {
+          res.status(403).send('Данный id - не id пользователя авторизованного сейчас')
+        }
+      } else {
+        res.status(403).send('Пользователь не авторизован')
+      }
+      await client.close()
+    } catch (e) {
+      res.status(500).send('Ошибка')
+    }
+  },
+  insertTask: async (token, userId, title, description, res) => {
+    try {
+      await client.connect()
+      const collection = await client.db('todo').collection('tasks')
+      const users = await client.db('todo').collection('users')
+      const isUserLogged = await users.findOne({token: token})
+      if (isUserLogged !== null) {
+        if (isUserLogged._id.toString() === userId) {
+          await collection.insertOne(
+            {
+              user: new ObjectId(userId),
+              title: title,
+              description: description,
+              status: 'new',
+              _id: new ObjectId()
+            }
+          )
+          res.status(201).send('Успешно')
+        } else {
+          res.status(403).send('Данный id - не id пользователя авторизованного сейчас')
+        }
+      } else {
+        res.status(403).send('Пользователь не авторизирован')
+      }
+      await client.close()
+    } catch (e) {
+      res.status(500).send('Ошибка')
+    }
   }
 }
 
