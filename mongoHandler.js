@@ -5,6 +5,18 @@ const {v4} = require('uuid')
 const client = new MongoClient('mongodb://localhost:27017')
 
 const mongoHandler = {
+  userTests: async (token, userId) => {
+    const users = await client.db('todo').collection('users')
+    const isUserLogged = await users.findOne({token: token})
+    if (isUserLogged !== null) {
+      if (isUserLogged._id.toString() === userId) {
+        return {success: true, status: 200, text: 'Успешно'}
+      } else {
+        return {success: false, status: 403, text: 'Данный id - не id пользователя авторизованного сейчас'}
+      }
+    }
+    return {success: false, status: 403, text: 'Пользователь не авторизован'}
+  },
   insertUser: async (username, password, res) => {
     try {
       await client.connect()
@@ -68,17 +80,12 @@ const mongoHandler = {
     try {
       await client.connect()
       const collection = await client.db('todo').collection('tasks')
-      const users = await client.db('todo').collection('users')
-      const isUserLogged = await users.findOne({token: token})
-      if (isUserLogged !== null) {
-        if (isUserLogged._id === new ObjectId(userId)) {
-          const todos = await collection.find({user: new ObjectId(userId)}).toArray()
-          res.status(200).send(todos)
-        } else {
-          res.status(403).send('Данный id - не id пользователя авторизованного сейчас')
-        }
+      const userTestInfo = await mongoHandler.userTests(token, userId)
+      if (userTestInfo.success) {
+        const todos = await collection.find({user: new ObjectId(userId)}).toArray()
+        res.status(userTestInfo.status).send(todos)
       } else {
-        res.status(403).send('Пользователь не авторизован')
+        res.status(userTestInfo.status).send(userTestInfo.text)
       }
       await client.close()
     } catch (e) {
@@ -89,27 +96,33 @@ const mongoHandler = {
     try {
       await client.connect()
       const collection = await client.db('todo').collection('tasks')
-      const users = await client.db('todo').collection('users')
-      const isUserLogged = await users.findOne({token: token})
-      if (isUserLogged !== null) {
-        if (isUserLogged._id.toString() === userId) {
-          await collection.insertOne(
-            {
-              user: new ObjectId(userId),
-              title: title,
-              description: description,
-              status: 'new',
-              _id: new ObjectId()
-            }
-          )
-          res.status(201).send('Успешно')
-        } else {
-          res.status(403).send('Данный id - не id пользователя авторизованного сейчас')
-        }
-      } else {
-        res.status(403).send('Пользователь не авторизирован')
+      const userTestInfo = await mongoHandler.userTests(token, userId)
+      if (userTestInfo.success) {
+        await collection.insertOne(
+          {
+            user: new ObjectId(userId),
+            title: title,
+            description: description,
+            status: 'new',
+            _id: new ObjectId()
+          }
+        )
       }
+      res.status(userTestInfo.status).send(userTestInfo.text)
       await client.close()
+    } catch (e) {
+      res.status(500).send('Ошибка')
+    }
+  },
+  changeTask: async (changes, taskId, userId, token, res) => {
+    try {
+      await client.connect()
+      const collection = await client.db('todo').collection('tasks')
+      const userTestInfo = await mongoHandler.userTests(token, userId)
+      if (userTestInfo.success && Object.values(changes)[0]) {
+        await collection.updateOne({user: new ObjectId(userId)}, {$set: changes})
+      }
+      res.status(userTestInfo.status).send(userTestInfo.text)
     } catch (e) {
       res.status(500).send('Ошибка')
     }
