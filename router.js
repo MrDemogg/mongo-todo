@@ -6,4 +6,8 @@ router.post('/user', (req, res) => {
   mongoHandler.insertUser(req.body.username, req.body.password, res).then()
 })
 
+router.post('/user/sessions', (req, res) => {
+  mongoHandler.login(req.body.username, req.body.password, res).then()
+})
+
 module.exports = router
