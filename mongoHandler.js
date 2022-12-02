@@ -123,6 +123,20 @@ const mongoHandler = {
         await collection.updateOne({user: new ObjectId(userId)}, {$set: changes})
       }
       res.status(userTestInfo.status).send(userTestInfo.text)
+      await client.close()
+    } catch (e) {
+      res.status(500).send('Ошибка')
+    }
+  },
+  deleteTask: async (taskId, userId, token, res) => {
+    try {
+      await client.connect()
+      const collection = await client.db('todo').collection('tasks')
+      const userTestInfo = await mongoHandler.userTests(token, userId)
+      if (userTestInfo.success && await collection.findOne({_id: new ObjectId(taskId)}) !== null) {
+        await collection.deleteOne({_id: new ObjectId(taskId)})
+      }
+      res.status(userTestInfo.status).send(userTestInfo.text)
     } catch (e) {
       res.status(500).send('Ошибка')
     }

@@ -31,4 +31,8 @@ router.put('/tasks/:id', (req, res) => {
   mongoHandler.changeTask(JSON.parse(JSON.stringify(changes)), req.params.id, req.body.userId, req.get('Token'), res).then()
 })
 
+router.delete('/tasks/:id', (req, res) => {
+  mongoHandler.deleteTask(req.params.id, req.body.userId, req.get('Token'), res).then()
+})
+
 module.exports = router
